@@ -10,5 +10,6 @@
     "@std/assert": "jsr:@std/assert@1",
     "sharp": "npm:sharp@^0.33.5"
   },
+  "unstable": ["kv"],
   "nodeModulesDir": "auto"
 }
