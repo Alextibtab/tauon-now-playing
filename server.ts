@@ -136,7 +136,7 @@ async function handleGetPreview(kv: Deno.Kv): Promise<Response> {
       }
       .widget svg {
         display: block;
-        width: 480px;
+        width: 800px;
         height: auto;
       }
       p {

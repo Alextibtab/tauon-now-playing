@@ -77,13 +77,13 @@ export interface SvgConfig {
 }
 
 export const defaultSvgConfig: SvgConfig = {
-  width: 480,
-  height: 120,
+  width: 800,
+  height: 200,
   cardBackground: "#18181b",
   cardBorder: "#27272a",
   textPrimary: "#fafafa",
   textSecondary: "#a1a1aa",
   textMuted: "#71717a",
-  albumSize: 90,
-  borderRadius: 8,
+  albumSize: 150,
+  borderRadius: 12,
 };

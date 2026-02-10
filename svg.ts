@@ -139,9 +139,13 @@ function generateMusicNotePlaceholder(
 
 function generateTauonBadge(x: number, y: number, size: number): string {
   const center = size / 2;
+  const scale = 0.68;
+  const offset = 14 * scale;
   return `<g transform="translate(${x}, ${y})">
     <circle cx="${center}" cy="${center}" r="${center}" fill="#111111" opacity="0.9" />
-    <g transform="translate(${center - 8}, ${center - 8}) scale(0.55)">
+    <g transform="translate(${center - offset}, ${
+    center - offset
+  }) scale(${scale})">
       <ellipse cx="14.55" cy="14.551" rx="14.549" ry="14.551" fill="url(#tauonGradient)" />
       <path d="M 29.098999,-14.551 A 14.549,14.551 0 0 1 14.549999,0 v -14.551 z" transform="scale(1,-1)" fill="#ffffff" fill-opacity="0.156" />
       <path d="M -0.001,14.551 A 14.549,14.551 0 0 1 -14.549999,29.101999 V 14.551 Z" transform="scale(-1,1)" fill="#ffffff" fill-opacity="0.156" />
@@ -173,16 +177,16 @@ export function generateNowPlayingSvg(
   const width = config.width;
   const height = config.height;
   const albumSize = config.albumSize;
-  const padding = 15;
+  const padding = 26;
   const albumX = padding;
   const albumY = (height - albumSize) / 2;
-  const textX = albumX + albumSize + 18;
+  const textX = albumX + albumSize + 22;
   const barsStartX = 2;
   const barsEndX = width - 2;
   const waveBaseY = height - 2;
-  const waveHeight = 36;
-  const titleFontSize = 15;
-  const titleClipWidth = Math.max(180, barsStartX - textX - 28);
+  const waveHeight = 70;
+  const titleFontSize = 20;
+  const titleClipWidth = Math.max(220, barsStartX - textX - 40);
   const titleText = data?.title || "";
   const titleSeed = hashString(titleText || "tauon");
   const titleTextWidth = estimateTextWidth(titleText, titleFontSize);
@@ -220,8 +224,8 @@ export function generateNowPlayingSvg(
     </clipPath>
     <clipPath id="titleClip" clipPathUnits="userSpaceOnUse">
       <rect x="${textX}" y="${
-    albumY + 20
-  }" width="${titleClipWidth}" height="20" />
+    albumY + 34
+  }" width="${titleClipWidth}" height="26" />
     </clipPath>
     <filter id="glow" x="-50%" y="-50%" width="200%" height="200%">
       <feDropShadow dx="0" dy="0" stdDeviation="8" flood-color="${highlight}" flood-opacity="0.65" />
@@ -290,8 +294,8 @@ export function generateNowPlayingSvg(
       ? `
     <!-- Status pill -->
     <text x="${textX}" y="${
-        albumY + 12
-      }" fill="${highlight}" font-size="9.5" font-weight="700" letter-spacing="0.15em" filter="url(#textGlow)">
+        albumY + 18
+      }" fill="${highlight}" font-size="12" font-weight="700" letter-spacing="0.18em" filter="url(#textGlow)">
       ${isStale ? "LAST PLAYED" : isPlaying ? "NOW PLAYING" : "PAUSED"}
     </text>
 
@@ -302,12 +306,12 @@ export function generateNowPlayingSvg(
     <g clip-path="url(#titleClip)">
       <g>
         <text x="${textX}" y="${
-            albumY + 32
+            albumY + 56
           }" fill="${config.textPrimary}" font-size="${titleFontSize}" font-weight="600" filter="url(#textGlow)">
           ${escapeXml(data.title)}
         </text>
         <text x="${textX + titleScrollDistance}" y="${
-            albumY + 32
+            albumY + 56
           }" fill="${config.textPrimary}" font-size="${titleFontSize}" font-weight="600" filter="url(#textGlow)">
           ${escapeXml(data.title)}
         </text>
@@ -317,7 +321,7 @@ export function generateNowPlayingSvg(
     `
           : `
     <text x="${textX}" y="${
-            albumY + 32
+            albumY + 56
           }" fill="${config.textPrimary}" font-size="${titleFontSize}" font-weight="600" text-overflow="ellipsis" filter="url(#textGlow)">
       ${escapeXml(truncateText(data.title, 35))}
     </text>
@@ -326,15 +330,15 @@ export function generateNowPlayingSvg(
 
     <!-- Artist -->
     <text x="${textX}" y="${
-        albumY + 58
-      }" fill="${config.textSecondary}" font-size="12.5">
+        albumY + 92
+      }" fill="${config.textSecondary}" font-size="16">
       ${escapeXml(truncateText(data.artist, 40))}
     </text>
 
     <!-- Album and status -->
     <text x="${textX}" y="${
-        albumY + 70
-      }" fill="${config.textMuted}" font-size="11.5">
+        albumY + 126
+      }" fill="${config.textMuted}" font-size="14">
       ${escapeXml(truncateText(data.album, 40))}
     </text>
     `
@@ -355,7 +359,11 @@ export function generateNowPlayingSvg(
   <!-- Album art with rounded corners -->
   <image x="${albumX}" y="${albumY}" width="${albumSize}" height="${albumSize}" xlink:href="data:image/jpeg;base64,${data.artBase64}" clip-path="url(#albumClip)" preserveAspectRatio="xMidYMid slice" filter="url(#glow)" />
   <rect x="${albumX}" y="${albumY}" width="${albumSize}" height="${albumSize}" rx="${config.borderRadius}" fill="none" stroke="${highlight}" stroke-opacity="0.45" stroke-width="2" filter="url(#textGlow)" />
-  ${generateTauonBadge(albumX + albumSize - 20, albumY + albumSize - 20, 18)}
+  ${generateTauonBadge(
+    albumX + albumSize - config.borderRadius - 11,
+    albumY + albumSize - config.borderRadius - 11,
+    22,
+  )}
   `
       : generateMusicNotePlaceholder(
         albumX,
