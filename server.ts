@@ -1,4 +1,4 @@
-import { NowPlayingData } from "./types.ts";
+import { defaultSvgConfig, NowPlayingData, SvgConfig } from "./types.ts";
 import { generateNowPlayingSvg } from "./svg.ts";
 
 const API_KEY = Deno.env.get("API_KEY");
@@ -8,10 +8,12 @@ if (!API_KEY) {
 }
 
 const KV_KEY = ["now-playing"];
+const THEME_NAME_PATTERN = /^[a-z0-9_-]+$/i;
+const FONT_FILE_PATTERN = /^[a-z0-9._-]+$/i;
+const FONT_FAMILY_PATTERN = /^[a-z0-9 _-]+$/i;
+const themeCache = new Map<string, SvgConfig>();
+const fontCache = new Map<string, { dataUrl: string; format: string }>();
 
-/**
- * Validate Bearer token from Authorization header
- */
 function validateAuth(req: Request): boolean {
   const auth = req.headers.get("Authorization");
   if (!auth) return false;
@@ -20,9 +22,6 @@ function validateAuth(req: Request): boolean {
   return parts[1] === API_KEY;
 }
 
-/**
- * Store now playing data in KV
- */
 async function storeNowPlaying(
   kv: Deno.Kv,
   data: NowPlayingData,
@@ -30,17 +29,11 @@ async function storeNowPlaying(
   await kv.set(KV_KEY, data);
 }
 
-/**
- * Get now playing data from KV
- */
 async function getNowPlaying(kv: Deno.Kv): Promise<NowPlayingData | null> {
   const result = await kv.get<NowPlayingData>(KV_KEY);
   return result.value;
 }
 
-/**
- * Handle POST /api/now-playing - receive data from poller
- */
 async function handlePostNowPlaying(
   req: Request,
   kv: Deno.Kv,
@@ -67,12 +60,204 @@ async function handlePostNowPlaying(
   }
 }
 
-/**
- * Handle GET /now-playing.svg - serve SVG widget
- */
-async function handleGetSvg(kv: Deno.Kv): Promise<Response> {
+function isSvgConfig(value: unknown): value is SvgConfig {
+  if (!value || typeof value !== "object") return false;
+  const config = value as Record<string, unknown>;
+  const isNumber = (input: unknown): input is number =>
+    typeof input === "number" && Number.isFinite(input);
+  const isString = (input: unknown): input is string =>
+    typeof input === "string" && input.length > 0;
+  const isBoolean = (input: unknown): input is boolean =>
+    typeof input === "boolean";
+  const albumPosition = config.albumPosition;
+  const textAlign = config.textAlign;
+  return isNumber(config.width) &&
+    isNumber(config.height) &&
+    isString(config.cardBackground) &&
+    isString(config.cardBorder) &&
+    isString(config.textPrimary) &&
+    isString(config.textSecondary) &&
+    isString(config.textMuted) &&
+    isNumber(config.albumSize) &&
+    isNumber(config.borderRadius) &&
+    (albumPosition === "left" || albumPosition === "right") &&
+    (textAlign === "left" || textAlign === "center" ||
+      textAlign === "right") &&
+    isBoolean(config.showStatus) &&
+    isBoolean(config.showTitle) &&
+    isBoolean(config.showArtist) &&
+    isBoolean(config.showAlbum) &&
+    isString(config.fontTitleFamily) &&
+    isString(config.fontBodyFamily) &&
+    isString(config.fontTitleFile) &&
+    isString(config.fontBodyFile) &&
+    isString(config.fontFallback);
+}
+
+function getFontFormat(fileName: string): string | null {
+  const lower = fileName.toLowerCase();
+  if (lower.endsWith(".woff2")) return "woff2";
+  if (lower.endsWith(".woff")) return "woff";
+  if (lower.endsWith(".ttf")) return "truetype";
+  if (lower.endsWith(".otf")) return "opentype";
+  return null;
+}
+
+async function loadFontData(
+  fileName: string,
+): Promise<{ dataUrl: string; format: string } | null> {
+  if (!FONT_FILE_PATTERN.test(fileName)) {
+    return null;
+  }
+  if (fontCache.has(fileName)) {
+    return fontCache.get(fileName) ?? null;
+  }
+  const format = getFontFormat(fileName);
+  if (!format) return null;
+  try {
+    const fontUrl = new URL(`./fonts/${fileName}`, import.meta.url);
+    const data = await Deno.readFile(fontUrl);
+    let binary = "";
+    const chunkSize = 0x8000;
+    for (let i = 0; i < data.length; i += chunkSize) {
+      const chunk = data.subarray(i, i + chunkSize);
+      binary += String.fromCharCode(...chunk);
+    }
+    const base64 = btoa(binary);
+    const mime = format === "woff2"
+      ? "font/woff2"
+      : format === "woff"
+      ? "font/woff"
+      : format === "truetype"
+      ? "font/ttf"
+      : "font/otf";
+    const dataUrl = `data:${mime};base64,${base64}`;
+    const entry = { dataUrl, format };
+    fontCache.set(fileName, entry);
+    return entry;
+  } catch (error) {
+    console.warn(`Failed to load font: ${fileName}`, error);
+    return null;
+  }
+}
+
+function parseBooleanParam(value: string | null): boolean | undefined {
+  if (!value) return undefined;
+  const normalized = value.trim().toLowerCase();
+  if (normalized === "1" || normalized === "true") return true;
+  if (normalized === "0" || normalized === "false") return false;
+  return undefined;
+}
+
+function parseTextAlign(value: string | null): "left" | "center" | "right" |
+  undefined {
+  if (!value) return undefined;
+  const normalized = value.trim().toLowerCase();
+  if (normalized === "left") return "left";
+  if (normalized === "right") return "right";
+  if (normalized === "center" || normalized === "centre") return "center";
+  return undefined;
+}
+
+function inferFontFamily(fileName: string): string {
+  const base = fileName.replace(/\.[^.]+$/, "");
+  return base.replace(/[_-]+/g, " ").trim() || base;
+}
+
+function parseFontFile(value: string | null): string | undefined {
+  if (!value) return undefined;
+  const normalized = value.trim();
+  if (!normalized || !FONT_FILE_PATTERN.test(normalized)) return undefined;
+  return normalized;
+}
+
+function parseFontFamily(value: string | null): string | undefined {
+  if (!value) return undefined;
+  const normalized = value.trim();
+  if (!normalized || !FONT_FAMILY_PATTERN.test(normalized)) return undefined;
+  return normalized;
+}
+
+async function loadTheme(name: string): Promise<SvgConfig | null> {
+  if (themeCache.has(name)) {
+    return themeCache.get(name) ?? null;
+  }
+
+  if (!THEME_NAME_PATTERN.test(name)) {
+    return null;
+  }
+
+  try {
+    const themeUrl = new URL(`./themes/${name}.json`, import.meta.url);
+    const raw = await Deno.readTextFile(themeUrl);
+    const parsed = JSON.parse(raw);
+    if (!isSvgConfig(parsed)) {
+      console.warn(`Theme schema invalid: ${name}`);
+      return null;
+    }
+    themeCache.set(name, parsed);
+    return parsed;
+  } catch (error) {
+    console.warn(`Failed to load theme: ${name}`, error);
+    return null;
+  }
+}
+
+async function buildSvgConfig(params: URLSearchParams): Promise<SvgConfig> {
+  const themeParam = params.get("theme") || "default";
+  const themeName = THEME_NAME_PATTERN.test(themeParam)
+    ? themeParam
+    : "default";
+  const theme = await loadTheme(themeName);
+  const position = params.get("position");
+  const albumPosition = position === "right"
+    ? "right"
+    : position === "left"
+    ? "left"
+    : undefined;
+  const textAlign = parseTextAlign(params.get("align"));
+  const showStatus = parseBooleanParam(params.get("showStatus"));
+  const showTitle = parseBooleanParam(params.get("showTitle"));
+  const showArtist = parseBooleanParam(params.get("showArtist"));
+  const showAlbum = parseBooleanParam(params.get("showAlbum"));
+  const fontTitleFile = parseFontFile(params.get("fontTitle"));
+  const fontBodyFile = parseFontFile(params.get("fontBody"));
+  const fontTitleFamilyParam = parseFontFamily(params.get("fontTitleFamily"));
+  const fontBodyFamilyParam = parseFontFamily(params.get("fontBodyFamily"));
+  const fontTitleFamily = fontTitleFamilyParam ||
+    (fontTitleFile ? inferFontFamily(fontTitleFile) : undefined);
+  const fontBodyFamily = fontBodyFamilyParam ||
+    (fontBodyFile ? inferFontFamily(fontBodyFile) : undefined);
+  const baseConfig: SvgConfig = {
+    ...defaultSvgConfig,
+    ...(theme || {}),
+    ...(albumPosition ? { albumPosition } : {}),
+    ...(textAlign ? { textAlign } : {}),
+    ...(showStatus !== undefined ? { showStatus } : {}),
+    ...(showTitle !== undefined ? { showTitle } : {}),
+    ...(showArtist !== undefined ? { showArtist } : {}),
+    ...(showAlbum !== undefined ? { showAlbum } : {}),
+    ...(fontTitleFile ? { fontTitleFile } : {}),
+    ...(fontBodyFile ? { fontBodyFile } : {}),
+    ...(fontTitleFamily ? { fontTitleFamily } : {}),
+    ...(fontBodyFamily ? { fontBodyFamily } : {}),
+  };
+  const titleFont = await loadFontData(baseConfig.fontTitleFile);
+  const bodyFont = await loadFontData(baseConfig.fontBodyFile);
+  return {
+    ...baseConfig,
+    fontTitleDataUrl: titleFont?.dataUrl,
+    fontBodyDataUrl: bodyFont?.dataUrl,
+    fontTitleFormat: titleFont?.format,
+    fontBodyFormat: bodyFont?.format,
+  };
+}
+
+async function handleGetSvg(req: Request, kv: Deno.Kv): Promise<Response> {
   const data = await getNowPlaying(kv);
-  const svg = generateNowPlayingSvg(data);
+  const params = new URL(req.url).searchParams;
+  const config = await buildSvgConfig(params);
+  const svg = generateNowPlayingSvg(data, config);
 
   return new Response(svg, {
     status: 200,
@@ -83,9 +268,6 @@ async function handleGetSvg(kv: Deno.Kv): Promise<Response> {
   });
 }
 
-/**
- * Handle GET /api/now-playing - JSON API for debugging
- */
 async function handleGetNowPlaying(kv: Deno.Kv): Promise<Response> {
   const data = await getNowPlaying(kv);
   return new Response(JSON.stringify(data), {
@@ -97,12 +279,11 @@ async function handleGetNowPlaying(kv: Deno.Kv): Promise<Response> {
   });
 }
 
-/**
- * Handle GET /preview - HTML preview with lorem ipsum and embedded SVG
- */
-async function handleGetPreview(kv: Deno.Kv): Promise<Response> {
+async function handleGetPreview(req: Request, kv: Deno.Kv): Promise<Response> {
   const data = await getNowPlaying(kv);
-  const svg = generateNowPlayingSvg(data);
+  const params = new URL(req.url).searchParams;
+  const config = await buildSvgConfig(params);
+  const svg = generateNowPlayingSvg(data, config);
   const html = `<!doctype html>
 <html lang="en">
   <head>
@@ -174,14 +355,10 @@ async function handleGetPreview(kv: Deno.Kv): Promise<Response> {
   });
 }
 
-/**
- * Main request handler
- */
 async function handleRequest(req: Request, kv: Deno.Kv): Promise<Response> {
   const url = new URL(req.url);
   const path = url.pathname;
 
-  // CORS headers
   const corsHeaders = {
     "Access-Control-Allow-Origin": "*",
     "Access-Control-Allow-Methods": "GET, POST, OPTIONS",
@@ -196,9 +373,9 @@ async function handleRequest(req: Request, kv: Deno.Kv): Promise<Response> {
     let response: Response;
 
     if (path === "/now-playing.svg" && req.method === "GET") {
-      response = await handleGetSvg(kv);
+      response = await handleGetSvg(req, kv);
     } else if (path === "/preview" && req.method === "GET") {
-      response = await handleGetPreview(kv);
+      response = await handleGetPreview(req, kv);
     } else if (path === "/api/now-playing" && req.method === "POST") {
       response = await handlePostNowPlaying(req, kv);
     } else if (path === "/api/now-playing" && req.method === "GET") {
@@ -225,7 +402,6 @@ async function handleRequest(req: Request, kv: Deno.Kv): Promise<Response> {
       });
     }
 
-    // Add CORS headers to all responses
     const newHeaders = new Headers(response.headers);
     for (const [key, value] of Object.entries(corsHeaders)) {
       newHeaders.set(key, value);
@@ -245,9 +421,6 @@ async function handleRequest(req: Request, kv: Deno.Kv): Promise<Response> {
   }
 }
 
-/**
- * Initialize and start the server
- */
 async function main(): Promise<void> {
   const kv = await Deno.openKv();
   console.log("KV connected");

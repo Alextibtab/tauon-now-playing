@@ -1,6 +1,3 @@
-/**
- * Tauon Music Player API response from /api1/status
- */
 export interface TauonTrack {
   title: string;
   artist: string;
@@ -17,7 +14,7 @@ export interface TauonTrack {
 }
 
 export interface TauonStatus {
-  status: "playing" | "paused";
+  status: "playing" | "paused" | "stopped";
   inc: number;
   shuffle: boolean;
   repeat: boolean;
@@ -35,18 +32,12 @@ export interface TauonStatus {
   album_id: number;
 }
 
-/**
- * Color palette extracted from album art
- */
 export interface ColorPalette {
   dominant: string; // Hex color
   accent: string; // Hex color for equalizer/border
   highlight: string; // Bright highlight color
 }
 
-/**
- * Data stored in Deno KV and passed between poller and server
- */
 export interface NowPlayingData {
   title: string;
   artist: string;
@@ -61,9 +52,6 @@ export interface NowPlayingData {
   updatedAt: number;
 }
 
-/**
- * SVG card configuration
- */
 export interface SvgConfig {
   width: number;
   height: number;
@@ -74,6 +62,21 @@ export interface SvgConfig {
   textMuted: string;
   albumSize: number;
   borderRadius: number;
+  albumPosition: "left" | "right";
+  textAlign: "left" | "center" | "right";
+  showStatus: boolean;
+  showTitle: boolean;
+  showArtist: boolean;
+  showAlbum: boolean;
+  fontTitleFamily: string;
+  fontBodyFamily: string;
+  fontTitleFile: string;
+  fontBodyFile: string;
+  fontFallback: string;
+  fontTitleDataUrl?: string;
+  fontBodyDataUrl?: string;
+  fontTitleFormat?: string;
+  fontBodyFormat?: string;
 }
 
 export const defaultSvgConfig: SvgConfig = {
@@ -82,8 +85,19 @@ export const defaultSvgConfig: SvgConfig = {
   cardBackground: "#18181b",
   cardBorder: "#27272a",
   textPrimary: "#fafafa",
-  textSecondary: "#a1a1aa",
-  textMuted: "#71717a",
+  textSecondary: "#cbd5e1",
+  textMuted: "#94a3b8",
   albumSize: 150,
-  borderRadius: 12,
+  borderRadius: 16,
+  albumPosition: "left",
+  textAlign: "left",
+  showStatus: true,
+  showTitle: true,
+  showArtist: true,
+  showAlbum: true,
+  fontTitleFamily: "DotGothic16",
+  fontBodyFamily: "Space Mono",
+  fontTitleFile: "DotGothic16-Regular.ttf",
+  fontBodyFile: "SpaceMono-Regular.ttf",
+  fontFallback: "'Segoe UI', sans-serif",
 };

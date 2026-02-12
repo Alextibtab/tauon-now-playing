@@ -5,12 +5,16 @@
 Deno TypeScript project for a Tauon Music Player "now playing" widget.
 
 **Architecture:**
+
 - `server.ts` - Deno Deploy API: serves SVG widget, receives data via KV
-- `poller.ts` - Local poller: polls Tauon API, resizes album art, pushes to Deploy API
-- `svg.ts` - Pure SVG card generation (no foreignObject for GitHub compatibility)
+- `poller.ts` - Local poller: polls Tauon API, resizes album art, pushes to
+  Deploy API
+- `svg.ts` - Pure SVG card generation (no foreignObject for GitHub
+  compatibility)
 - `types.ts` - Shared TypeScript types
 
-The widget displays currently playing track from Tauon Music Player on GitHub README.
+The widget displays currently playing track from Tauon Music Player on GitHub
+README.
 
 ## Commands
 
@@ -46,10 +50,12 @@ deno cache --unstable-kv server.ts
 ## Environment Variables
 
 ### Server (Deno Deploy)
+
 - `API_KEY` - Shared secret for authenticating poller requests (required)
 - `PORT` - Server port (default: 8000)
 
 ### Local Poller
+
 - `API_KEY` - Same shared secret as server (required)
 - `DEPLOY_URL` - URL of deployed API (required)
 - `TAUON_URL` - Tauon API URL (default: http://localhost:7814)
@@ -59,7 +65,8 @@ deno cache --unstable-kv server.ts
 
 ### TypeScript
 
-- Use explicit return types on exported functions: `function add(a: number, b: number): number`
+- Use explicit return types on exported functions:
+  `function add(a: number, b: number): number`
 - Use strict TypeScript settings (enforced by Deno)
 - Prefer `const` and `let` over `var`
 - Use type annotations for function parameters
@@ -69,7 +76,8 @@ deno cache --unstable-kv server.ts
 
 - Use JSR registry imports defined in `deno.json` imports field
 - Import format: `import { assertEquals } from "@std/assert";`
-- Use relative imports for local modules: `import { generateNowPlayingSvg } from "./svg.ts";`
+- Use relative imports for local modules:
+  `import { generateNowPlayingSvg } from "./svg.ts";`
 - Always include `.ts` extension in relative imports
 - Use npm packages when needed: `import sharp from "sharp";`
 

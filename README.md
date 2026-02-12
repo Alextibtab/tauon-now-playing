@@ -8,7 +8,8 @@ card for GitHub READMEs. The project has two parts:
   updates to the Deploy API.
 
 &nbsp;<div align="center">
-  ![Tauon Now Playing](https://tauon-now-playing.alextibtab.deno.net/now-playing.svg)
+![Tauon Now Playing](https://tauon-now-playing.alextibtab.deno.net/now-playing.svg)
+
 </div>
 
 ## Features
