@@ -17,7 +17,7 @@ export interface TauonTrack {
 }
 
 export interface TauonStatus {
-  status: "playing" | "paused" | "stopped";
+  status: "playing" | "paused";
   inc: number;
   shuffle: boolean;
   repeat: boolean;
@@ -55,7 +55,7 @@ export interface NowPlayingData {
   trackNumber: string;
   duration: number;
   progress: number;
-  status: "playing" | "paused" | "stopped";
+  status: "playing" | "paused";
   artBase64: string | null;
   colors: ColorPalette | null;
   updatedAt: number;

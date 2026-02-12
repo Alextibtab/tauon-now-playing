@@ -6,13 +6,15 @@ const TAUON_URL = Deno.env.get("TAUON_URL") || "http://localhost:7814";
 const DEPLOY_URL = Deno.env.get("DEPLOY_URL");
 const API_KEY = Deno.env.get("API_KEY");
 const POLL_INTERVAL_MS = parseInt(Deno.env.get("POLL_INTERVAL_MS") || "10000");
-const ART_TARGET_SIZE = 200; // Resized album art dimension (keeps it under 64KB when base64'd)
+const ART_TARGET_SIZE = 400; // Resized album art dimension (keeps it under 64KB when base64'd)
 
-// State to track last sent data to avoid unnecessary updates
+// State to track last sent/seen data to avoid unnecessary updates
 let lastSentTrackId: number | null = null;
-let lastSentProgress: number = 0;
 let lastSentStatus: string | null = null;
-const PROGRESS_THRESHOLD_MS = 5000; // Only update if progress changed by >5 seconds
+let lastSeenStatus: string | null = null;
+let lastAlbumName: string | null = null;
+let lastArtBase64: string | null = null;
+let lastColors: ColorPalette | null = null;
 
 if (!DEPLOY_URL) {
   console.error("DEPLOY_URL environment variable is required");
@@ -261,12 +263,16 @@ async function sendToDeploy(data: NowPlayingData): Promise<boolean> {
 }
 
 /**
- * Check if we should send an update (track change or significant progress change)
+ * Check if we should send an update (track change or play/pause change)
  */
 function shouldUpdate(status: TauonStatus): boolean {
   const trackId = status.id;
-  const progress = status.progress;
   const statusStr = status.status;
+  const isPlayableStatus = statusStr === "playing" || statusStr === "paused";
+
+  if (!isPlayableStatus) {
+    return false;
+  }
 
   // Always update on track change
   if (trackId !== lastSentTrackId) {
@@ -278,8 +284,8 @@ function shouldUpdate(status: TauonStatus): boolean {
     return true;
   }
 
-  // Update if progress changed significantly
-  if (Math.abs(progress - lastSentProgress) > PROGRESS_THRESHOLD_MS) {
+  // Update when transitioning from stopped to active playback
+  if (lastSeenStatus === "stopped") {
     return true;
   }
 
@@ -300,18 +306,32 @@ async function poll(): Promise<void> {
 
   // Check if we need to send an update
   if (!shouldUpdate(status)) {
+    lastSeenStatus = status.status;
     return;
   }
 
   let artBase64: string | null = null;
   let colors: ColorPalette | null = null;
+  const albumName = (status.track?.album || status.album || '').trim();
+  const isPlayableStatus = status.status === "playing" ||
+    status.status === "paused";
+  const hasCachedArt = albumName.length > 0 && albumName === lastAlbumName &&
+    lastArtBase64 && lastColors;
 
-  // Only fetch art if a track is playing
-  if (status.status === "playing" && status.id > 0) {
-    const artResult = await fetchAndResizeArt(status.id);
-    if (artResult) {
-      artBase64 = artResult.base64;
-      colors = artResult.colors;
+  // Fetch art when the album changes or cache is empty
+  if (isPlayableStatus && status.id > 0 && albumName.length > 0) {
+    if (!hasCachedArt) {
+      const artResult = await fetchAndResizeArt(status.id);
+      if (artResult) {
+        artBase64 = artResult.base64;
+        colors = artResult.colors;
+        lastAlbumName = albumName;
+        lastArtBase64 = artBase64;
+        lastColors = colors;
+      }
+    } else {
+      artBase64 = lastArtBase64;
+      colors = lastColors;
     }
   }
 
@@ -334,8 +354,8 @@ async function poll(): Promise<void> {
 
   if (success) {
     lastSentTrackId = status.id;
-    lastSentProgress = status.progress;
     lastSentStatus = status.status;
+    lastSeenStatus = status.status;
     console.log(`Updated: ${nowPlayingData.title} by ${nowPlayingData.artist}`);
   }
 }

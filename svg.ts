@@ -164,7 +164,8 @@ export function generateNowPlayingSvg(
 ): string {
   const isStale = data ? Date.now() - data.updatedAt > 5 * 60 * 1000 : true;
   const isPlaying = data && data.status === "playing" && !isStale;
-  const hasTrack = data && (isPlaying || isStale);
+  const isPaused = data && data.status === "paused" && !isStale;
+  const hasTrack = data && (isPlaying || isPaused || isStale);
 
   // Use extracted colors or fall back to defaults
   const dominantColor = data?.colors?.dominant || config.cardBorder;
@@ -184,7 +185,7 @@ export function generateNowPlayingSvg(
   const barsStartX = 2;
   const barsEndX = width - 2;
   const waveBaseY = height - 2;
-  const waveHeight = 70;
+  const waveHeight = 170;
   const titleFontSize = 20;
   const titleClipWidth = Math.max(220, barsStartX - textX - 40);
   const titleText = data?.title || "";
@@ -253,7 +254,7 @@ export function generateNowPlayingSvg(
       waveBaseY,
       waveHeight,
       titleSeed * 0.03,
-      10,
+      8,
     )
   }
     ${
@@ -265,7 +266,7 @@ export function generateNowPlayingSvg(
       waveBaseY,
       waveHeight * 0.7,
       titleSeed * 0.05 + 4.1,
-      14,
+      12,
     )
   }
   </g>
@@ -281,7 +282,7 @@ export function generateNowPlayingSvg(
           waveBaseY,
           waveHeight * 0.85,
           titleSeed * 0.08 + 8.2,
-          7,
+          5,
         )
       }</g>`
       : ""
