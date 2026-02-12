@@ -119,9 +119,7 @@ export function generateNowPlayingSvg(
 }`
       : '',
   ].filter(Boolean).join('\n');
-  const styleBlock = fontFaces
-    ? `<style><![CDATA[\n${fontFaces}\n]]></style>`
-    : '';
+  const styleBlock = fontFaces ? `<style>${fontFaces}</style>` : '';
 
   const svg = `<?xml version="1.0" encoding="UTF-8"?>
 <svg width="${width}" height="${height}" viewBox="0 0 ${width} ${height}" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink">
